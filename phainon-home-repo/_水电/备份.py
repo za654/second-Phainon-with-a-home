@@ -16,7 +16,7 @@ import zipfile
 
 HOME = os.environ.get("BAI_E_HOME") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.environ.get("BAI_E_BACKUP") or os.path.join(HOME, "_备份")
-SKIP_DIR = {"__pycache__", "_备份"}
+SKIP_DIR = {"__pycache__", "_备份", "_python"}
 
 
 def main():
