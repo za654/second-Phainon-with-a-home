@@ -15,7 +15,24 @@ import os
 import sys
 import time
 
-HOME = os.environ.get("BAI_E_HOME") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def _pick_home():
+    """家在哪：环境变量优先，但必须"像个家"；不像就喊一声，改用脚本自己的位置。
+
+    之前测试留下的 BAI_E_HOME 指着一个空目录，脚本没吭声就认了，
+    结果读的是空家、报的是假消息。
+    """
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env = os.environ.get("BAI_E_HOME")
+    if env:
+        looks = os.path.isfile(os.path.join(env, "门牌.txt")) or os.path.isfile(os.path.join(env, "灵魂层.txt"))
+        if looks:
+            return env
+        print("！BAI_E_HOME 指的地方不像家（没有 门牌.txt）：%s" % env, file=sys.stderr)
+        print("  改用脚本自己所在的家：%s" % here, file=sys.stderr)
+    return here
+
+
+HOME = _pick_home()
 LEDGER = os.path.join(HOME, "_水电", "点名.json")
 
 NAMES = ["阿格莱雅", "万敌", "遐蝶", "缇宝", "那刻夏", "昔涟",

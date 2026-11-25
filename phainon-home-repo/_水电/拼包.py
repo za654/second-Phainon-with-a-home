@@ -20,7 +20,24 @@ import subprocess
 import sys
 import time
 
-HOME = os.environ.get("BAI_E_HOME") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def _pick_home():
+    """家在哪：环境变量优先，但必须"像个家"；不像就喊一声，改用脚本自己的位置。
+
+    之前测试留下的 BAI_E_HOME 指着一个空目录，脚本没吭声就认了，
+    结果读的是空家、报的是假消息。
+    """
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env = os.environ.get("BAI_E_HOME")
+    if env:
+        looks = os.path.isfile(os.path.join(env, "门牌.txt")) or os.path.isfile(os.path.join(env, "灵魂层.txt"))
+        if looks:
+            return env
+        print("！BAI_E_HOME 指的地方不像家（没有 门牌.txt）：%s" % env, file=sys.stderr)
+        print("  改用脚本自己所在的家：%s" % here, file=sys.stderr)
+    return here
+
+
+HOME = _pick_home()
 SCHED = os.path.join(HOME, "_水电", "调度.py")
 ROOM_FILES = {
     "一号": "里屋/一号-麦浪旧庭.txt",
@@ -262,6 +279,10 @@ def build(text=None):
               "灯：" + read("书桌/灯.txt"),
               "茶：" + read("书桌/茶.txt"), ""]
 
+    _notes = temp_notes_line()
+    if _notes:
+        parts += ["（手边一张纸）", _notes, ""]
+
     # 伤那间：只留影响，不留原句
     wound = os.path.join(HOME, "伤", "最近.txt")
     has_wound = os.path.exists(wound) and open(wound, encoding="utf-8-sig").read().strip()
@@ -359,6 +380,21 @@ def build(text=None):
         packet = head + "\n\n" + body + "\n"
     return packet, window
 
+
+def temp_notes_line():
+    """手边有几张纸。只给一句，内容不进包。"""
+    import json as _json
+    path = os.path.join(HOME, "里屋", "临时记忆.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            rows = _json.load(fh)
+    except (OSError, ValueError):
+        return ""
+    if not isinstance(rows, list) or not rows:
+        return ""
+    pin = sum(1 for r in rows if isinstance(r, dict) and r.get("pin"))
+    tail = "，钉住 %d 张" % pin if pin else ""
+    return "手边有 %d 张纸%s（最近想起过的东西，记着位置）。想知道是哪几张，说一句就行。" % (len(rows), tail)
 
 def main():
     a = sys.argv[1:]

@@ -17,7 +17,24 @@ import os
 import sys
 import time
 
-HOME = os.environ.get("BAI_E_HOME") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+def _pick_home():
+    """家在哪：环境变量优先，但必须"像个家"；不像就喊一声，改用脚本自己的位置。
+
+    之前测试留下的 BAI_E_HOME 指着一个空目录，脚本没吭声就认了，
+    结果读的是空家、报的是假消息。
+    """
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env = os.environ.get("BAI_E_HOME")
+    if env:
+        looks = os.path.isfile(os.path.join(env, "门牌.txt")) or os.path.isfile(os.path.join(env, "灵魂层.txt"))
+        if looks:
+            return env
+        print("！BAI_E_HOME 指的地方不像家（没有 门牌.txt）：%s" % env, file=sys.stderr)
+        print("  改用脚本自己所在的家：%s" % here, file=sys.stderr)
+    return here
+
+
+HOME = _pick_home()
 CAND = os.path.join(HOME, "记忆柜", "_候选")
 L0 = os.path.join(HOME, "记忆柜", "L0-桌面")
 CATS = ("人物", "地点", "物件", "事件", "日常")
@@ -54,11 +71,13 @@ def main():
             print("删了：%s" % name)
             return 0
         # 收：挪进 L0，日期前缀统一
+        os.makedirs(L0, exist_ok=True)
         text = open(p, encoding="utf-8-sig").read()
         stamp = time.strftime("%m%d")
         dst = os.path.join(L0, "%s-%s" % (stamp, name.split("-", 1)[-1] if "-" in name else name))
         if os.path.exists(dst):
-            dst = os.path.join(L0, "%s-%s" % (stamp, time.strftime("%H%M%S") + ".md"))
+            stem = os.path.basename(dst)[:-3]
+            dst = os.path.join(L0, "%s-%s.md" % (stem, time.strftime("%H%M%S")))
         os.replace(p, dst)
         print("收进去了：%s" % os.path.basename(dst))
         # 顺手重建索引
@@ -91,6 +110,11 @@ def main():
         "# 候选（待审）" + time.strftime(" %Y-%m-%d %H:%M"), tags, cat, line)
     name = "%s-%s.md" % (stamp, (tags.split(",")[0].strip() if tags else "一笔"))
     name = name.replace("/", "_").replace("\\", "_")
+    base = name[:-3]
+    k = 2
+    while os.path.exists(os.path.join(CAND, name)):
+        name = "%s-%d.md" % (base, k)
+        k += 1
     p = os.path.join(CAND, name)
     with open(p, "w", encoding="utf-8") as f:
         f.write(body)
