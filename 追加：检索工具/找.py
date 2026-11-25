@@ -55,11 +55,16 @@ def _find_home():
     找.py 住在 <家>\_水电\ 里，所以往上两层就是家。
     这样整套东西搬到哪个盘、哪个目录都能用——写死路径是发布版的大忌。
     """
-    env = os.environ.get("FEIBAO_HOME")
-    if env:
+    # 环境变量可以有，但必须"像个家"；不像就喊一声，别静默读到空目录
+    for var in ("FEIBAO_HOME", "BAI_E_HOME"):
+        env = os.environ.get(var)
+        if not env:
+            continue
         p = Path(env).expanduser()
-        if p.is_dir():
+        if (p / "门牌.txt").is_file() or (p / "灵魂层.txt").is_file():
             return p.resolve()
+        print("！%s 指的地方不像家（没有 门牌.txt）：%s" % (var, env), file=sys.stderr)
+        print("  改用脚本自己所在的家。", file=sys.stderr)
     return Path(__file__).resolve().parent.parent
 
 
